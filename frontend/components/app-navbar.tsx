@@ -21,6 +21,10 @@ export function AppNavbar() {
   const { user, role, isLoading, setActorUserId } = useCurrentRole()
   const signedInName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email
 
+  if (pathname.startsWith("/sign-in")) {
+    return null
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8">
