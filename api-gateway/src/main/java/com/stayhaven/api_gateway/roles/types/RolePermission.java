@@ -1,0 +1,18 @@
+package com.stayhaven.api_gateway.roles.types;
+
+public enum RolePermission {
+    BOOKING_CREATE_OWN,
+    BOOKING_MANAGE_OWN,
+    SETTINGS_MANAGE_OWN,
+    USER_CREATE,
+    USER_UPDATE_OWN,
+    RENTAL_MANAGE_OWN,
+    HOST_CREATE,
+    HOST_ACCEPT,
+    BOOKING_MANAGE_ALL,
+    RENTAL_MANAGE_ALL,
+    USER_MANAGE_ALL,
+    HOST_MANAGE_ALL,
+    ADMIN_MANAGE,
+    PAYMENT_VIEW
+}
