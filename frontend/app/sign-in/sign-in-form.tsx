@@ -6,10 +6,12 @@ import { ArrowRight, CheckCircle, SignIn } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { ACTOR_STORAGE_KEY, demoActors, rolePath } from "@/features/auth/demo-actors"
+import { useCurrentRole } from "@/features/auth/use-current-role"
 import { cn } from "@/lib/utils"
 
 export function SignInForm() {
   const router = useRouter()
+  const { setActorUserId } = useCurrentRole()
   const [selectedActorId, setSelectedActorId] = useState(demoActors[0]?.id)
   const selectedActor = demoActors.find((actor) => actor.id === selectedActorId) ?? demoActors[0]
 
@@ -18,7 +20,9 @@ export function SignInForm() {
       return
     }
 
-    window.localStorage.setItem(ACTOR_STORAGE_KEY, selectedActor.id)
+    setActorUserId(selectedActor.id)
+    window.dispatchEvent(new StorageEvent("storage", { key: ACTOR_STORAGE_KEY, newValue: selectedActor.id }))
+    router.refresh()
     router.push(rolePath(selectedActor.role))
   }
 

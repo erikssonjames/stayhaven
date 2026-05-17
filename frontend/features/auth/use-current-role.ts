@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { ACTOR_STORAGE_KEY } from "@/features/auth/demo-actors"
@@ -25,6 +25,21 @@ export function useCurrentRole(options: UseCurrentRoleOptions = {}) {
   })
 
   const actorUserId = options.userId ?? storedUserId
+
+  useEffect(() => {
+    if (options.userId !== undefined || typeof window === "undefined") {
+      return
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === ACTOR_STORAGE_KEY) {
+        setStoredUserId(event.newValue)
+      }
+    }
+
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
+  }, [options.userId])
   const currentUserQuery = useQuery({
     queryKey: ["current-user", actorUserId],
     queryFn: () => getUser(actorUserId as string, { actorUserId }),
