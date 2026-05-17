@@ -27,17 +27,17 @@ export const demoActors: DemoActor[] = [
   },
   {
     id: "10000000-0000-0000-0000-000000000003",
-    role: "ADMIN",
-    email: "admin@stayhaven.test",
-    name: "Priya Nair",
-    description: "Review hosts, resolve operations, and monitor platform health.",
+    role: "USER",
+    email: "alex@stayhaven.test",
+    name: "Alex Carter",
+    description: "Plan upcoming stays and keep reservations organized.",
   },
   {
     id: "10000000-0000-0000-0000-000000000004",
-    role: "SUPERADMIN",
-    email: "superadmin@stayhaven.test",
-    name: "Elena Vale",
-    description: "Oversee permissions, admins, payments, and all platform data.",
+    role: "USER",
+    email: "nora@stayhaven.test",
+    name: "Nora Bennett",
+    description: "Explore listings, reserve trips, and track travel dates.",
   },
 ]
 
