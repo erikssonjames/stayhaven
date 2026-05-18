@@ -188,11 +188,20 @@ public class BookingService {
             return ResponseEntity.ok(ApiResponse.ok(toDto(existingUserReservation.get())));
         }
 
+        terminateOverlappingReservedBookings(
+                request.listingId().trim(),
+                parsedUserId.get(),
+                request.checkIn(),
+                request.checkOut(),
+                Optional.empty()
+        );
+
         Optional<BookingEntity> overlappingBooking = findConflictingBooking(
                 request.listingId().trim(),
                 request.checkIn(),
                 request.checkOut(),
-                Optional.empty()
+                Optional.empty(),
+                Optional.of(parsedUserId.get())
         );
         if (overlappingBooking.isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -229,6 +238,7 @@ public class BookingService {
         }
 
         Optional<UUID> parsedBookingId = Optional.empty();
+        UUID actorUserId = actor.userId();
         if (bookingId != null && !bookingId.isBlank()) {
             parsedBookingId = parseUuid(bookingId);
             if (parsedBookingId.isEmpty()) {
@@ -241,6 +251,7 @@ public class BookingService {
             }
 
             BookingEntity existingBooking = booking.get();
+            actorUserId = existingBooking.getUser().getId();
             authorizationService.requireSelfOrPermission(
                     actor,
                     existingBooking.getUser().getId(),
@@ -254,11 +265,20 @@ public class BookingService {
             }
         }
 
+        terminateOverlappingReservedBookings(
+                listingId.trim(),
+                actor.userId(),
+                checkIn,
+                checkOut,
+                parsedBookingId
+        );
+
         Optional<BookingEntity> conflictingBooking = findConflictingBooking(
                 listingId.trim(),
                 checkIn,
                 checkOut,
-                parsedBookingId
+                parsedBookingId,
+                Optional.of(actorUserId)
         );
         if (conflictingBooking.isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -297,7 +317,7 @@ public class BookingService {
         if (booking.getStatus() != BookingStatus.RESERVED) {
             throw new IllegalStateException("Booking must be reserved before payment.");
         }
-        findConflictingBooking(listingId.trim(), checkIn, checkOut, Optional.of(booking.getId()))
+        findConflictingBooking(listingId.trim(), checkIn, checkOut, Optional.of(booking.getId()), Optional.of(booking.getUser().getId()))
                 .ifPresent(conflict -> {
                     throw new IllegalStateException("This rental was reserved by someone else for one or more selected dates.");
                 });
@@ -336,7 +356,9 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("User was not found."));
         HostEntity host = hostRepository.findById(hostId)
                 .orElseThrow(() -> new IllegalArgumentException("Host was not found."));
-        findConflictingBooking(listingId.trim(), checkIn, checkOut, Optional.empty())
+        terminateOverlappingReservedBookings(listingId.trim(), userId, checkIn, checkOut, Optional.empty());
+
+        findConflictingBooking(listingId.trim(), checkIn, checkOut, Optional.empty(), Optional.of(userId))
                 .ifPresent(conflict -> {
                     throw new IllegalStateException("This rental was reserved by someone else for one or more selected dates.");
                 });
@@ -384,12 +406,35 @@ public class BookingService {
             String listingId,
             LocalDate checkIn,
             LocalDate checkOut,
-            Optional<UUID> allowedBookingId
+            Optional<UUID> allowedBookingId,
+            Optional<UUID> ignoredUserId
     ) {
         return bookingRepository.findOverlappingActiveBookings(listingId, checkIn, checkOut, activeBookingStatuses())
                 .stream()
                 .filter(booking -> allowedBookingId.map(id -> !booking.getId().equals(id)).orElse(true))
+                .filter(booking -> ignoredUserId.map(userId -> !booking.getUser().getId().equals(userId)).orElse(true))
                 .findFirst();
+    }
+
+    private void terminateOverlappingReservedBookings(
+            String listingId,
+            UUID userId,
+            LocalDate checkIn,
+            LocalDate checkOut,
+            Optional<UUID> allowedBookingId
+    ) {
+        List<BookingEntity> overlappingBookings = bookingRepository
+                .findOverlappingActiveBookings(listingId, checkIn, checkOut, activeBookingStatuses())
+                .stream()
+                .filter(booking -> booking.getUser().getId().equals(userId))
+                .filter(booking -> booking.getStatus() == BookingStatus.RESERVED)
+                .filter(booking -> allowedBookingId.map(id -> !booking.getId().equals(id)).orElse(true))
+                .toList();
+
+        overlappingBookings.forEach(booking -> booking.setStatus(BookingStatus.CANCELLED));
+        if (!overlappingBookings.isEmpty()) {
+            bookingRepository.saveAll(overlappingBookings);
+        }
     }
 
     private List<BookingStatus> activeBookingStatuses() {
