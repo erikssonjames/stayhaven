@@ -12,11 +12,12 @@ export type User = {
 
 export type CreateUserRequest = {
   email: string
+  password: string
   firstName?: string | null
   lastName?: string | null
 }
 
-export type UpdateUserRequest = CreateUserRequest
+export type UpdateUserRequest = Omit<CreateUserRequest, "password">
 
 export function getUser(userId: string, options?: ApiRequestOptions) {
   return apiRequest<User>(`/api/users/${userId}`, options)

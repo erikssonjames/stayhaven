@@ -80,3 +80,10 @@ export function createBooking(request: CreateBookingRequest, options?: ApiReques
     body: request,
   })
 }
+
+export function deleteBooking(bookingId: string, options?: ApiRequestOptions) {
+  return apiRequest(`/api/bookings/${bookingId}`, {
+    ...options,
+    method: "DELETE",
+  })
+}

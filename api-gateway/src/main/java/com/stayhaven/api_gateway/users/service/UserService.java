@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,17 +27,20 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserSettingsRepository userSettingsRepository;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService(
             AuthorizationService authorizationService,
             UserRepository userRepository,
             UserSettingsRepository userSettingsRepository,
-            RoleRepository roleRepository
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.authorizationService = authorizationService;
         this.userRepository = userRepository;
         this.userSettingsRepository = userSettingsRepository;
         this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public ResponseEntity<ApiResponse<UserDto>> getUser(AuthenticatedActor actor, String userId) {
@@ -61,7 +65,7 @@ public class UserService {
     public ResponseEntity<ApiResponse<UserDto>> createUser(AuthenticatedActor actor, CreateUserRequest request) {
         authorizationService.require(actor, RolePermission.USER_CREATE);
 
-        Optional<String> validationError = validate(request.email());
+        Optional<String> validationError = validate(request.email(), request.password());
         if (validationError.isPresent()) {
             return ResponseEntity.badRequest().body(ApiResponse.fail(validationError.get()));
         }
@@ -76,6 +80,7 @@ public class UserService {
                 request.email().trim(),
                 trimToNull(request.firstName()),
                 trimToNull(request.lastName()),
+                passwordEncoder.encode(request.password()),
                 userRole
         ));
         userSettingsRepository.save(new UserSettingsEntity(user));
@@ -136,6 +141,17 @@ public class UserService {
     private Optional<String> validate(String email) {
         if (email == null || email.isBlank()) {
             return Optional.of("Email is required.");
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> validate(String email, String password) {
+        Optional<String> emailError = validate(email);
+        if (emailError.isPresent()) {
+            return emailError;
+        }
+        if (password == null || password.length() < 8) {
+            return Optional.of("Password must be at least 8 characters.");
         }
         return Optional.empty();
     }

@@ -9,17 +9,13 @@ import com.stayhaven.api_gateway.common.ApiResponse;
 import com.stayhaven.api_gateway.security.AuthenticatedActor;
 import java.time.LocalDate;
 import java.util.List;
+
+import jakarta.annotation.Nonnull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -37,7 +33,7 @@ public class BookingController {
         return bookingService.getUpcomingBookings(actor);
     }
 
-    @GetMapping("/{bookingId:[0-9a-fA-F-]{36}}")
+    @GetMapping("/{bookingId}")
     public ResponseEntity<@NonNull ApiResponse<BookingDto>> getBooking(
             @PathVariable String bookingId,
             @AuthenticationPrincipal AuthenticatedActor actor
@@ -45,8 +41,17 @@ public class BookingController {
         return bookingService.getBooking(actor, bookingId);
     }
 
+    @DeleteMapping("/{bookingId}")
+    public ResponseEntity<@NonNull Void> deleteBooking(
+        @PathVariable String bookingId,
+        @AuthenticationPrincipal AuthenticatedActor actor
+    ) {
+        bookingService.deleteBooking(actor, bookingId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping
-    public ResponseEntity<@NonNull ApiResponse<BookingDto>> createBooking(
+    public ResponseEntity<@NonNull ApiResponse<BookingDto>> reserveBooking(
             @RequestBody CreateBookingRequest request,
             @AuthenticationPrincipal AuthenticatedActor actor
     ) {

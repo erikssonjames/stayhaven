@@ -1,4 +1,4 @@
-export const ACTOR_USER_ID_HEADER = "X-Actor-User-Id"
+export const AUTH_TOKEN_STORAGE_KEY = "stayhaven.authToken"
 
 export type ApiResponse<T> = {
   success: boolean
@@ -28,13 +28,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8
 
 export async function apiRequest<T>(
   path: string,
-  { actorUserId, body, headers, ...init }: ApiRequestOptions = {},
+  { actorUserId: _actorUserId, body, headers, ...init }: ApiRequestOptions = {},
 ): Promise<T> {
   const requestHeaders = new Headers(headers)
   requestHeaders.set("Accept", "application/json")
 
-  if (actorUserId) {
-    requestHeaders.set(ACTOR_USER_ID_HEADER, actorUserId)
+  const authToken = getStoredAuthToken()
+  if (authToken && !requestHeaders.has("Authorization")) {
+    requestHeaders.set("Authorization", `Bearer ${authToken}`)
   }
 
   const requestInit: RequestInit = {
@@ -85,5 +86,24 @@ async function parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
       data: null,
       message: text,
     }
+  }
+}
+
+export function getStoredAuthToken() {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+}
+
+export function storeAuthToken(token: string) {
+  window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+}
+
+export function clearAuthToken() {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+    window.location.href = "/sign-in"
   }
 }

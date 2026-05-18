@@ -1,16 +1,18 @@
 "use client"
 
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
-import { ArrowRight, CalendarBlank, HouseLine, SignIn } from "@phosphor-icons/react"
+import { useMutation, UseMutationResult, useQuery } from "@tanstack/react-query"
+import { ArrowRightIcon, CalendarBlankIcon, HouseLineIcon, SignInIcon } from "@phosphor-icons/react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useCurrentRole } from "@/features/auth/use-current-role"
-import { getUpcomingBookings, type BookingStatus, type UpcomingBooking } from "@/features/bookings/api"
+import { deleteBooking, getUpcomingBookings, type BookingStatus, type UpcomingBooking } from "@/features/bookings/api"
 import { formatCurrency, nightsBetween } from "@/features/rentals/catalog"
 import { cn } from "@/lib/utils"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTrigger, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 
 export default function UserDashboardPage() {
   const { user, role, userId, isLoading, error } = useCurrentRole()
@@ -19,6 +21,16 @@ export default function UserDashboardPage() {
     queryFn: () => getUpcomingBookings({ actorUserId: userId }),
     enabled: Boolean(userId && role === "USER"),
   })
+
+  const deleteBookingMutation = useMutation({
+    mutationFn: (bookingId: string) => deleteBooking(bookingId),
+    onSuccess: () => {
+      toast.success("Booking cancelled")
+      bookingsQuery.refetch()
+    }
+  })
+
+
 
   if (isLoading) {
     return <StatePanel title="Loading bookings" text="Checking your Stayhaven account." />
@@ -36,7 +48,7 @@ export default function UserDashboardPage() {
       >
         <Button asChild>
           <Link href="/sign-in">
-            <SignIn data-icon="inline-start" />
+            <SignInIcon data-icon="inline-start" />
             Go to sign in
           </Link>
         </Button>
@@ -53,7 +65,7 @@ export default function UserDashboardPage() {
         <Button asChild>
           <Link href={`/dashboard/${role?.toLowerCase()}`}>
             Open your dashboard
-            <ArrowRight data-icon="inline-end" />
+            <ArrowRightIcon data-icon="inline-end" />
           </Link>
         </Button>
       </StatePanel>
@@ -73,7 +85,7 @@ export default function UserDashboardPage() {
           </div>
           <Button asChild variant="outline">
             <Link href="/rentals">
-              <HouseLine data-icon="inline-start" />
+              <HouseLineIcon data-icon="inline-start" />
               Browse rentals
             </Link>
           </Button>
@@ -87,7 +99,7 @@ export default function UserDashboardPage() {
           ) : bookingsQuery.data && bookingsQuery.data.length > 0 ? (
             <div className="grid gap-4">
               {bookingsQuery.data.map((booking) => (
-                <BookingCard key={booking.id} booking={booking} />
+                <BookingCard key={booking.id} booking={booking} deleteBooking={deleteBookingMutation} />
               ))}
             </div>
           ) : (
@@ -99,9 +111,11 @@ export default function UserDashboardPage() {
   )
 }
 
-function BookingCard({ booking }: { booking: UpcomingBooking }) {
+function BookingCard({ booking, deleteBooking }: { booking: UpcomingBooking; deleteBooking: UseMutationResult<unknown, Error, string, unknown> }) {
   const nights = nightsBetween(booking.checkIn, booking.checkOut)
   const estimatedTotal = booking.pricePerNight * nights
+
+  const { mutate: deleteBookingMutate, isPending } = deleteBooking;
 
   return (
     <Card>
@@ -115,12 +129,39 @@ function BookingCard({ booking }: { booking: UpcomingBooking }) {
           </div>
           <h2 className="mt-3 text-2xl font-semibold">{booking.listingName}</h2>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/rentals/${booking.listingId}`}>
-            View rental
-            <ArrowRight data-icon="inline-end" />
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/rentals/${booking.listingId}`}>
+              View rental
+              <ArrowRightIcon data-icon="inline-end" />
+            </Link>
+          </Button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Cancel</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete your booking and remove it
+                  from our servers.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => deleteBookingMutate(booking.id)}
+                  disabled={isPending}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardHeader>
       <CardContent className="grid gap-5 p-5 sm:grid-cols-3">
         <BookingFact label="Check-in" value={formatDate(booking.checkIn)} />
@@ -137,7 +178,7 @@ function BookingCard({ booking }: { booking: UpcomingBooking }) {
 function BookingFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <CalendarBlank className="mt-0.5 size-5 shrink-0 text-primary" weight="duotone" />
+      <CalendarBlankIcon className="mt-0.5 size-5 shrink-0 text-primary" weight="duotone" />
       <div>
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="mt-1 font-semibold">{value}</p>
@@ -149,14 +190,14 @@ function BookingFact({ label, value }: { label: string; value: string }) {
 function EmptyBookings() {
   return (
     <MessageCard
-      icon={<CalendarBlank className="size-8 text-primary" weight="duotone" />}
+      icon={<CalendarBlankIcon className="size-8 text-primary" weight="duotone" />}
       title="No upcoming bookings"
       text="Once you reserve a Stayhaven rental, it will appear here with dates, host, and status."
     >
       <Button asChild className="mt-6">
         <Link href="/rentals">
           Find a stay
-          <ArrowRight data-icon="inline-end" />
+          <ArrowRightIcon data-icon="inline-end" />
         </Link>
       </Button>
     </MessageCard>

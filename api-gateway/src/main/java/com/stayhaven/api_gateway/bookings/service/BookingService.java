@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,7 +54,7 @@ public class BookingService {
         this.rentalRepository = rentalRepository;
     }
 
-    public ResponseEntity<ApiResponse<BookingDto>> getBooking(AuthenticatedActor actor, String bookingId) {
+    public ResponseEntity<@NonNull ApiResponse<BookingDto>> getBooking(AuthenticatedActor actor, String bookingId) {
         Optional<UUID> parsedBookingId = parseUuid(bookingId);
         if (parsedBookingId.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("Booking id must be a valid UUID."));
@@ -74,8 +76,24 @@ public class BookingService {
         return ResponseEntity.ok(ApiResponse.ok(toDto(existingBooking)));
     }
 
+    public void deleteBooking(AuthenticatedActor actor, String bookingId) {
+        Optional<UUID> parsedBookingId = parseUuid(bookingId);
+        if (parsedBookingId.isEmpty()) {
+            throw new IllegalArgumentException("Booking id must be a valid UUID.");
+        }
+        BookingEntity booking = bookingRepository.findById(parsedBookingId.get())
+                .orElseThrow(() -> new IllegalArgumentException("Booking was not found."));
+        authorizationService.requireSelfOrPermission(
+                actor,
+                booking.getUser().getId(),
+                RolePermission.BOOKING_MANAGE_OWN,
+                RolePermission.BOOKING_MANAGE_ALL
+        );
+        bookingRepository.delete(booking);
+    }
+
     @Transactional(readOnly = true)
-    public ResponseEntity<ApiResponse<List<UpcomingBookingDto>>> getUpcomingBookings(AuthenticatedActor actor) {
+    public ResponseEntity<@NonNull ApiResponse<List<UpcomingBookingDto>>> getUpcomingBookings(AuthenticatedActor actor) {
         authorizationService.require(actor, RolePermission.BOOKING_MANAGE_OWN);
 
         List<UpcomingBookingDto> bookings = bookingRepository
@@ -91,7 +109,7 @@ public class BookingService {
         return ResponseEntity.ok(ApiResponse.ok(bookings));
     }
 
-    public ResponseEntity<ApiResponse<BookingAvailabilityDto>> getAvailability(
+    public ResponseEntity<@NonNull ApiResponse<BookingAvailabilityDto>> getAvailability(
             String listingId,
             LocalDate checkIn,
             LocalDate checkOut
@@ -123,7 +141,7 @@ public class BookingService {
     }
 
     @Transactional
-    public ResponseEntity<ApiResponse<BookingDto>> createBooking(
+    public ResponseEntity<@NonNull ApiResponse<BookingDto>> createBooking(
             AuthenticatedActor actor,
             CreateBookingRequest request
     ) {
@@ -198,7 +216,7 @@ public class BookingService {
         }
     }
 
-    public ResponseEntity<ApiResponse<BookingReservationStatusDto>> checkReservationAvailability(
+    public ResponseEntity<@NonNull ApiResponse<BookingReservationStatusDto>> checkReservationAvailability(
             AuthenticatedActor actor,
             String listingId,
             LocalDate checkIn,

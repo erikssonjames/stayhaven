@@ -1,5 +1,6 @@
 package com.stayhaven.api_gateway.security;
 
+import com.stayhaven.api_gateway.auth.service.AuthTokenService;
 import com.stayhaven.api_gateway.hosts.repository.HostRepository;
 import com.stayhaven.api_gateway.users.entity.UserEntity;
 import com.stayhaven.api_gateway.users.repository.UserRepository;
@@ -18,12 +19,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class ActorAuthenticationFilter extends OncePerRequestFilter {
-    public static final String ACTOR_USER_ID_HEADER = "X-Actor-User-Id";
+    private static final String BEARER_PREFIX = "Bearer ";
 
+    private final AuthTokenService authTokenService;
     private final UserRepository userRepository;
     private final HostRepository hostRepository;
 
-    public ActorAuthenticationFilter(UserRepository userRepository, HostRepository hostRepository) {
+    public ActorAuthenticationFilter(
+            AuthTokenService authTokenService,
+            UserRepository userRepository,
+            HostRepository hostRepository
+    ) {
+        this.authTokenService = authTokenService;
         this.userRepository = userRepository;
         this.hostRepository = hostRepository;
     }
@@ -31,20 +38,25 @@ public class ActorAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String actorUserId = request.getHeader(ACTOR_USER_ID_HEADER);
-        if (actorUserId == null || actorUserId.isBlank()) {
+        String bearerToken = resolveBearerToken(request);
+        if (bearerToken == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        try {
-            UUID userId = UUID.fromString(actorUserId);
-            userRepository.findWithRoleById(userId).ifPresent(user -> authenticate(user, resolveHostId(user)));
-        } catch (IllegalArgumentException ignored) {
-            SecurityContextHolder.clearContext();
-        }
+        authTokenService.validateToken(bearerToken)
+                .flatMap(userRepository::findWithRoleById)
+                .ifPresent(user -> authenticate(user, resolveHostId(user)));
 
         filterChain.doFilter(request, response);
+    }
+
+    private String resolveBearerToken(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader("Authorization");
+        if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+            return null;
+        }
+        return authorizationHeader.substring(BEARER_PREFIX.length()).trim();
     }
 
     private void authenticate(UserEntity user, UUID hostId) {

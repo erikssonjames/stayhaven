@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
+    @EntityGraph(attributePaths = "role")
     Optional<UserEntity> findByEmail(String email);
 
     @EntityGraph(attributePaths = "role")
