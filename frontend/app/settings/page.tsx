@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useCurrentRole } from "@/features/auth/use-current-role"
-import { rolePath } from "@/features/auth/demo-actors"
 
 export default function SettingsPage() {
   const { user, role, isLoading, error } = useCurrentRole()
@@ -48,12 +47,6 @@ export default function SettingsPage() {
           <Badge className="mt-5" variant="secondary">
             {role.toLowerCase()}
           </Badge>
-          <Button asChild className="mt-6 w-full">
-            <Link href={rolePath(role)}>
-              Open workspace
-              <ArrowRight data-icon="inline-end" />
-            </Link>
-          </Button>
         </Card>
 
         <section className="grid gap-3">

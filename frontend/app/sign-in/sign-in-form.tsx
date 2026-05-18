@@ -8,13 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { login } from "@/features/auth/api"
-import { demoActors } from "@/features/auth/demo-actors"
 import { useCurrentRole } from "@/features/auth/use-current-role"
 
 export function SignInForm() {
   const router = useRouter()
   const { setAuthToken } = useCurrentRole()
-  const [email, setEmail] = useState(demoActors[0]?.email ?? "")
+  const [email, setEmail] = useState("user@stayhaven.test")
   const [password, setPassword] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
