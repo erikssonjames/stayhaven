@@ -13,6 +13,7 @@ import com.stayhaven.api_gateway.hosts.entity.HostEntity;
 import com.stayhaven.api_gateway.hosts.repository.HostRepository;
 import com.stayhaven.api_gateway.rentals.entity.RentalEntity;
 import com.stayhaven.api_gateway.rentals.repository.RentalRepository;
+import com.stayhaven.api_gateway.roles.service.RolePolicy;
 import com.stayhaven.api_gateway.roles.types.RolePermission;
 import com.stayhaven.api_gateway.security.AuthenticatedActor;
 import com.stayhaven.api_gateway.security.AuthorizationService;
@@ -66,14 +67,26 @@ public class BookingService {
         }
 
         BookingEntity existingBooking = booking.get();
+        requireBookingViewPermission(actor, existingBooking);
+
+        return ResponseEntity.ok(ApiResponse.ok(toDto(existingBooking)));
+    }
+
+    public void cancelBooking(AuthenticatedActor actor, String bookingId) {
+        Optional<UUID> parsedBookingId = parseUuid(bookingId);
+        if (parsedBookingId.isEmpty()) {
+            throw new IllegalArgumentException("Booking id must be a valid UUID.");
+        }
+        BookingEntity booking = bookingRepository.findByIdAndStatusEquals(parsedBookingId.get(), BookingStatus.CONFIRMED)
+                .orElseThrow(() -> new IllegalArgumentException("Booking was not found."));
         authorizationService.requireSelfOrPermission(
                 actor,
-                existingBooking.getUser().getId(),
+                booking.getUser().getId(),
                 RolePermission.BOOKING_MANAGE_OWN,
                 RolePermission.BOOKING_MANAGE_ALL
         );
-
-        return ResponseEntity.ok(ApiResponse.ok(toDto(existingBooking)));
+        booking.setStatus(BookingStatus.CANCELLED);
+        bookingRepository.saveAndFlush(booking);
     }
 
     public void deleteBooking(AuthenticatedActor actor, String bookingId) {
@@ -82,26 +95,36 @@ public class BookingService {
             throw new IllegalArgumentException("Booking id must be a valid UUID.");
         }
         BookingEntity booking = bookingRepository.findById(parsedBookingId.get())
-                .orElseThrow(() -> new IllegalArgumentException("Booking was not found."));
-        authorizationService.requireSelfOrPermission(
-                actor,
-                booking.getUser().getId(),
-                RolePermission.BOOKING_MANAGE_OWN,
-                RolePermission.BOOKING_MANAGE_ALL
+            .orElseThrow(() -> new IllegalArgumentException("Booking was not found."));
+        authorizationService.require(
+            actor,
+            RolePermission.BOOKING_MANAGE_ALL
         );
         bookingRepository.delete(booking);
     }
 
     @Transactional(readOnly = true)
     public ResponseEntity<@NonNull ApiResponse<List<UpcomingBookingDto>>> getUpcomingBookings(AuthenticatedActor actor) {
-        authorizationService.require(actor, RolePermission.BOOKING_MANAGE_OWN);
+        LocalDate today = LocalDate.now();
+        List<BookingStatus> statuses = activeBookingStatuses();
 
-        List<UpcomingBookingDto> bookings = bookingRepository
-                .findUpcomingByUserId(
-                        actor.userId(),
-                        LocalDate.now(),
-                        activeBookingStatuses()
-                )
+        List<BookingEntity> upcomingBookings;
+        if (actor != null
+                && actor.hostId() != null
+                && RolePolicy.hasPermission(actor.role(), RolePermission.RENTAL_MANAGE_OWN)) {
+            authorizationService.requireOwnHostOrPermission(
+                    actor,
+                    actor.hostId(),
+                    RolePermission.RENTAL_MANAGE_OWN,
+                    RolePermission.BOOKING_MANAGE_ALL
+            );
+            upcomingBookings = bookingRepository.findUpcomingByHostId(actor.hostId(), today, statuses);
+        } else {
+            authorizationService.require(actor, RolePermission.BOOKING_MANAGE_OWN);
+            upcomingBookings = bookingRepository.findUpcomingByUserId(actor.userId(), today, statuses);
+        }
+
+        List<UpcomingBookingDto> bookings = upcomingBookings
                 .stream()
                 .map(this::toUpcomingDto)
                 .toList();
@@ -373,9 +396,9 @@ public class BookingService {
         }
     }
 
-    public BookingEntity confirmBooking(BookingEntity booking) {
+    public void confirmBooking(BookingEntity booking) {
         booking.setStatus(BookingStatus.CONFIRMED);
-        return bookingRepository.saveAndFlush(booking);
+        bookingRepository.saveAndFlush(booking);
     }
 
     private Optional<UUID> parseUuid(String value) {
@@ -467,6 +490,23 @@ public class BookingService {
                 booking.getCheckOutDate(),
                 booking.getStatus()
         );
+    }
+
+    private void requireBookingViewPermission(AuthenticatedActor actor, BookingEntity booking) {
+        if (actor != null
+                && actor.userId().equals(booking.getUser().getId())
+                && RolePolicy.hasPermission(actor.role(), RolePermission.BOOKING_MANAGE_OWN)) {
+            return;
+        }
+
+        if (actor != null
+                && actor.hostId() != null
+                && actor.hostId().equals(booking.getHost().getId())
+                && RolePolicy.hasPermission(actor.role(), RolePermission.RENTAL_MANAGE_OWN)) {
+            return;
+        }
+
+        authorizationService.require(actor, RolePermission.BOOKING_MANAGE_ALL);
     }
 
     private UpcomingBookingDto toUpcomingDto(BookingEntity booking) {

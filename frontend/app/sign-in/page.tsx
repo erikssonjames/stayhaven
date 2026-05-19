@@ -22,7 +22,7 @@ export default function SignInPage() {
             Sign in with your email and password to access your Stayhaven account securely.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">Seeded local accounts are still available for development.</p>
+        <span />
       </section>
       <section className="flex items-center justify-center px-5 py-10 sm:px-8">
         <SignInForm />

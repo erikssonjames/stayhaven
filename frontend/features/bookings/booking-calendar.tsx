@@ -45,6 +45,7 @@ export function BookingCalendar({ rentalId, checkIn, checkOut, onDatesChange }: 
   const availabilityQuery = useQuery({
     queryKey: ["rental-availability", rentalId, availabilityStart, availabilityEnd, availabilityRevision],
     queryFn: () => getRentalAvailability(rentalId, availabilityStart, availabilityEnd),
+    refetchInterval: 5000
   })
 
   const blockedDateValues = useMemo(
@@ -100,17 +101,11 @@ export function BookingCalendar({ rentalId, checkIn, checkOut, onDatesChange }: 
         selected={selectedRange}
       />
 
-      <div className="mt-4 min-h-5">
-        {availabilityQuery.isFetching ? (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <SpinnerGap className="size-3 animate-spin" />
-            Syncing availability
-          </span>
-        ) : null}
         {availabilityQuery.error instanceof Error ? (
-          <span className="text-xs text-destructive">{availabilityQuery.error.message}</span>
+          <div className="mt-4 min-h-5">
+            <span className="text-xs text-destructive">{availabilityQuery.error.message}</span>
+          </div>
         ) : null}
-      </div>
     </Card>
   )
 }

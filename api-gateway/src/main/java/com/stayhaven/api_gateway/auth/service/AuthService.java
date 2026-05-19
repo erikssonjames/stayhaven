@@ -34,13 +34,13 @@ public class AuthService {
             return ResponseEntity.badRequest().body(ApiResponse.fail("Email and password are required."));
         }
 
-        return userRepository.findByEmail(request.email().trim())
-                .filter(user -> passwordEncoder.matches(request.password(), user.getPasswordHash()))
-                .map(user -> ResponseEntity.ok(ApiResponse.ok(new AuthResponse(
-                        authTokenService.issueToken(user.getId()),
-                        toDto(user)
-                ))))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        var users = userRepository.findByEmail(request.email().trim());
+        var filteredUsers = users.map(user -> ResponseEntity.ok(ApiResponse.ok(new AuthResponse(
+            authTokenService.issueToken(user.getId()),
+            toDto(user)
+        ))));
+
+        return filteredUsers.orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.fail("Invalid email or password.")));
     }
 

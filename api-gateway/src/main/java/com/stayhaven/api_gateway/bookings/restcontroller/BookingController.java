@@ -50,6 +50,16 @@ public class BookingController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{bookingId}/cancel")
+    public ResponseEntity<@NonNull Void> cancelBooking(
+        @PathVariable String bookingId,
+        @AuthenticationPrincipal AuthenticatedActor actor
+    ) {
+        bookingService.cancelBooking(actor, bookingId);
+        return ResponseEntity.noContent().build();
+    }
+
+
     @PostMapping
     public ResponseEntity<@NonNull ApiResponse<BookingDto>> reserveBooking(
             @RequestBody CreateBookingRequest request,

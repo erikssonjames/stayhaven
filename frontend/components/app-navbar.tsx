@@ -1,8 +1,9 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BuildingsIcon, GearSixIcon, SignOutIcon, UserCircleIcon } from "@phosphor-icons/react"
+import { GearSixIcon, SignOutIcon, UserCircleIcon } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +13,7 @@ import { cn } from "@/lib/utils"
 const navLinks = [
   { href: "/", label: "Home", requiresAuth: false },
   { href: "/rentals", label: "Rentals", requiresAuth: false },
-  { href: "/dashboard/user", label: "Dashboard", requiresAuth: true },
+  { href: "/dashboard", label: "Dashboard", requiresAuth: true },
 ]
 
 export function AppNavbar() {
@@ -29,9 +30,7 @@ export function AppNavbar() {
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8">
         <div className="flex items-center gap-5">
           <Link href="/" className="flex items-center gap-2 text-sm font-semibold">
-            <span className="flex size-8 items-center justify-center bg-primary text-primary-foreground">
-              <BuildingsIcon weight="fill" />
-            </span>
+            <Image src="/stayhaven-icon.png" alt="" width={32} height={32} className="size-8" priority />
             Stayhaven
           </Link>
           <nav className="hidden items-center gap-1 sm:flex">

@@ -32,6 +32,21 @@ public interface BookingRepository extends JpaRepository<BookingEntity, UUID> {
             @Param("statuses") List<BookingStatus> statuses
     );
 
+    @Query("""
+            select booking
+            from BookingEntity booking
+            join fetch booking.host
+            where booking.host.id = :hostId
+                and booking.checkOutDate >= :checkOutDate
+                and booking.status in :statuses
+            order by booking.checkInDate asc
+            """)
+    List<BookingEntity> findUpcomingByHostId(
+            @Param("hostId") UUID hostId,
+            @Param("checkOutDate") LocalDate checkOutDate,
+            @Param("statuses") List<BookingStatus> statuses
+    );
+
     Optional<BookingEntity> findFirstByListingIdAndUserIdAndCheckInDateAndCheckOutDateAndStatusIn(
             String listingId,
             UUID userId,
@@ -65,4 +80,6 @@ public interface BookingRepository extends JpaRepository<BookingEntity, UUID> {
             @Param("status") BookingStatus status,
             @Param("cutoff") Instant cutoff
     );
+
+    Optional<BookingEntity> findByIdAndStatusEquals(UUID id, BookingStatus status);
 }

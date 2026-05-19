@@ -87,3 +87,10 @@ export function deleteBooking(bookingId: string, options?: ApiRequestOptions) {
     method: "DELETE",
   })
 }
+
+export function cancelBooking(bookingId: string, options?: ApiRequestOptions) {
+  return apiRequest(`/api/bookings/${bookingId}/cancel`, {
+    ...options,
+    method: "POST",
+  })
+}
