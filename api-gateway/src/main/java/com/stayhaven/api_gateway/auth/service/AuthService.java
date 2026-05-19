@@ -35,12 +35,14 @@ public class AuthService {
         }
 
         var users = userRepository.findByEmail(request.email().trim());
-        var filteredUsers = users.map(user -> ResponseEntity.ok(ApiResponse.ok(new AuthResponse(
-            authTokenService.issueToken(user.getId()),
-            toDto(user)
-        ))));
+        var filteredUsers = users.filter(user -> passwordEncoder.matches(request.password(), user.getPasswordHash()));
 
-        return filteredUsers.orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        return filteredUsers
+                .map(user -> ResponseEntity.ok(ApiResponse.ok(new AuthResponse(
+                        authTokenService.issueToken(user.getId()),
+                        toDto(user)
+                ))))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.fail("Invalid email or password.")));
     }
 
